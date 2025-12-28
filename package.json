@@ -2,14 +2,15 @@
   "name": "citizen-root",
   "version": "1.0.0",
   "private": true,
+  "dependencies": {
+    "concurrently": "^9.2.1"
+  },
   "scripts": {
+    "build": "echo 'Root build not used. Set Root Directory in your deployment settings.'",
     "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install && cd ../ai-service && pip install -r requirements.txt",
     "dev:frontend": "cd frontend && npm run dev",
     "dev:backend": "cd backend && npm run dev",
     "dev:ai": "cd ai-service && python app.py",
     "dev": "npx concurrently \"npm run dev:frontend\" \"npm run dev:backend\" \"npm run dev:ai\""
-  },
-  "devDependencies": {
-    "concurrently": "^9.2.1"
   }
 }
