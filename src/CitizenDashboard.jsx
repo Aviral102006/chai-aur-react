@@ -2,6 +2,8 @@ import { useState, useEffect, useContext } from 'react';
 import './CitizenDashboard.css';
 import IncidentMap from './IncidentMap';
 import AuthContext from './context/AuthContext';
+import logo from './assets/logo.png';
+
 
 const CitizenDashboard = () => {
     const { user, logout } = useContext(AuthContext);
@@ -18,19 +20,18 @@ const CitizenDashboard = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Form state for incident reporting
     const [incidentForm, setIncidentForm] = useState({
         type: '',
         description: '',
         location: '',
         latitude: '',
         longitude: '',
-        media: null,
-        severity: 'medium'
+        media: null
     });
 
     const [mediaPreview, setMediaPreview] = useState(null);
     const [isLocating, setIsLocating] = useState(false);
+    const [analysis, setAnalysis] = useState({ severity: null, departments: [], adminType: null, loading: false });
 
     // Fetch incidents from API
     const fetchIncidents = async () => {
@@ -66,7 +67,38 @@ const CitizenDashboard = () => {
         fetchIncidents();
     }, [filters]);
 
-    // Filter incidents based on selected filters
+    // AI Analysis debounced
+    useEffect(() => {
+        if (!incidentForm.description || incidentForm.description.length < 10) {
+            setAnalysis({ severity: null, departments: [], loading: false });
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            setAnalysis(prev => ({ ...prev, loading: true }));
+            try {
+                const response = await fetch('http://localhost:5000/api/incidents/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ description: incidentForm.description })
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    setAnalysis({
+                        severity: data.severity,
+                        departments: data.departments,
+                        adminType: data.adminType,
+                        loading: false
+                    });
+                }
+            } catch (err) {
+                console.error('Analysis error:', err);
+                setAnalysis(prev => ({ ...prev, loading: false }));
+            }
+        }, 1000);
+
+        return () => clearTimeout(timer);
+    }, [incidentForm.description]);
 
 
     const handleFormChange = (e) => {
@@ -155,7 +187,8 @@ const CitizenDashboard = () => {
             formData.append('latitude', incidentForm.latitude || 37.7749);
             formData.append('longitude', incidentForm.longitude || -122.4194);
             formData.append('severity', incidentForm.severity);
-            formData.append('reportedBy', 'You'); // scalable to logged in user
+            formData.append('reportedBy', user ? user.name : 'Anonymous');
+            formData.append('reporterEmail', user ? user.email : 'unknown@example.com');
 
             if (incidentForm.media) {
                 formData.append('media', incidentForm.media);
@@ -184,9 +217,7 @@ const CitizenDashboard = () => {
                 description: '',
                 location: '',
                 latitude: '',
-                longitude: '',
-                media: null,
-                severity: 'medium'
+                longitude: ''
             });
             setMediaPreview(null);
 
@@ -281,11 +312,11 @@ const CitizenDashboard = () => {
             <header className="dashboard-header">
                 <div className="container">
                     <div className="header-content">
-                        <div className="logo-section">
-                            <div className="logo-icon">🚨</div>
+                        <div className="logo-section" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <img src={logo} alt="CrisisLink Logo" style={{ width: '100px', height: '100px', objectFit: 'contain' }} />
                             <div>
-                                <h1 className="gradient-text">Emergency Response Hub</h1>
-                                <p className="header-subtitle">Real-time incident reporting & monitoring</p>
+                                <h1 className="gradient-text">CrisisLink</h1>
+                                <p className="header-subtitle" style={{ fontSize: '0.75rem' }}>Secure AI-Driven Incident Routing</p>
                             </div>
                         </div>
                         <div className="header-stats">
@@ -537,12 +568,19 @@ const CitizenDashboard = () => {
                                                             <span>{incident.location}</span>
                                                         </div>
                                                         <div className="meta-item">
+                                                            <span className="meta-icon">🔑</span>
+                                                            <span style={{ fontWeight: '500' }}>{incident.adminType} Admin</span>
+                                                        </div>
+                                                        <div className="meta-item">
                                                             <span className="meta-icon">🕒</span>
                                                             <span>{getTimeAgo(incident.timestamp)}</span>
                                                         </div>
-                                                        <div className="meta-item">
+                                                        <div className="meta-item author-info" title={incident.reporterEmail}>
                                                             <span className="meta-icon">👤</span>
-                                                            <span>{incident.reportedBy}</span>
+                                                            <span style={{ fontWeight: '500' }}>{incident.reportedBy}</span>
+                                                            <span className="reporter-email" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginLeft: '4px' }}>
+                                                                ({incident.reporterEmail})
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -560,10 +598,8 @@ const CitizenDashboard = () => {
                                                         <span className="upvote-count">{incident.upvotes}</span>
                                                     </button>
                                                 </div>
-
                                                 <div
                                                     className="severity-indicator"
-                                                    style={{ background: getSeverityColor(incident.severity) }}
                                                 ></div>
                                             </div>
                                         ))}
@@ -617,6 +653,54 @@ const CitizenDashboard = () => {
                                                 onChange={handleFormChange}
                                                 required
                                             ></textarea>
+
+                                            {/* AI Insight Section */}
+                                            {(analysis.loading || analysis.departments.length > 0 || analysis.severity) && (
+                                                <div className="ai-analysis-box glass-card" style={{ marginTop: '0.5rem', padding: '0.75rem', border: '1px solid var(--primary-blue)', background: 'rgba(52, 152, 219, 0.05)' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                                        <span style={{ fontSize: '1.2rem' }}>🤖</span>
+                                                        <span style={{ fontWeight: '600', fontSize: '0.85rem', color: 'var(--primary-blue)' }}>Smart Analysis</span>
+                                                        {analysis.loading && <span className="spinner" style={{ fontSize: '0.8rem' }}>⏳</span>}
+                                                    </div>
+                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                                        {analysis.severity && (
+                                                            <span className={`badge badge-${analysis.severity}`} style={{ fontSize: '0.75rem' }}>
+                                                                AI Predicted Severity: {analysis.severity.toUpperCase()}
+                                                            </span>
+                                                        )}
+                                                        {analysis.departments.map(dept => (
+                                                            <span key={dept} style={{
+                                                                background: 'var(--secondary-blue)',
+                                                                color: 'white',
+                                                                padding: '2px 8px',
+                                                                borderRadius: '10px',
+                                                                fontSize: '0.75rem',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '4px'
+                                                            }}>
+                                                                🏢 {dept}
+                                                            </span>
+                                                        ))}
+                                                        {analysis.adminType && (
+                                                            <span style={{
+                                                                background: 'var(--text-primary)',
+                                                                color: 'white',
+                                                                padding: '2px 8px',
+                                                                borderRadius: '10px',
+                                                                fontSize: '0.75rem'
+                                                            }}>
+                                                                🔑 Admin: {analysis.adminType}
+                                                            </span>
+                                                        )}
+                                                        {(analysis.departments.length > 0 || analysis.adminType) && (
+                                                            <div style={{ width: '100%', marginTop: '4px', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                                                                This incident will be routed to: <strong>{analysis.adminType || analysis.departments.join(', ')}</strong>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div className="form-group full-width">
@@ -684,58 +768,38 @@ const CitizenDashboard = () => {
                                                 onChange={handleFormChange}
                                             />
                                         </div>
+                                    </div>
 
-                                        <div className="form-group full-width">
-                                            <label htmlFor="severity">Severity Level *</label>
-                                            <div className="severity-selector">
-                                                {['low', 'medium', 'high', 'critical'].map(level => (
-                                                    <label key={level} className="severity-option">
-                                                        <input
-                                                            type="radio"
-                                                            name="severity"
-                                                            value={level}
-                                                            checked={incidentForm.severity === level}
-                                                            onChange={handleFormChange}
-                                                        />
-                                                        <span className={`severity-label severity-${level}`}>
-                                                            {level.charAt(0).toUpperCase() + level.slice(1)}
-                                                        </span>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <div className="form-group full-width">
-                                            <label htmlFor="media">Upload Media (Optional)</label>
-                                            <div className="media-upload">
-                                                <input
-                                                    type="file"
-                                                    id="media"
-                                                    name="media"
-                                                    accept="image/*,video/*"
-                                                    onChange={handleMediaUpload}
-                                                    className="media-input"
-                                                />
-                                                <label htmlFor="media" className="media-upload-label">
-                                                    <span className="upload-icon">📷</span>
-                                                    <span>Click to upload photo or video</span>
-                                                </label>
-                                                {mediaPreview && (
-                                                    <div className="media-preview">
-                                                        <img src={mediaPreview} alt="Preview" />
-                                                        <button
-                                                            type="button"
-                                                            className="remove-media"
-                                                            onClick={() => {
-                                                                setMediaPreview(null);
-                                                                setIncidentForm(prev => ({ ...prev, media: null }));
-                                                            }}
-                                                        >
-                                                            ✕
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
+                                    <div className="form-group full-width">
+                                        <label htmlFor="media">Upload Media (Optional)</label>
+                                        <div className="media-upload">
+                                            <input
+                                                type="file"
+                                                id="media"
+                                                name="media"
+                                                accept="image/*,video/*"
+                                                onChange={handleMediaUpload}
+                                                className="media-input"
+                                            />
+                                            <label htmlFor="media" className="media-upload-label">
+                                                <span className="upload-icon">📷</span>
+                                                <span>Click to upload photo or video</span>
+                                            </label>
+                                            {mediaPreview && (
+                                                <div className="media-preview">
+                                                    <img src={mediaPreview} alt="Preview" />
+                                                    <button
+                                                        type="button"
+                                                        className="remove-media"
+                                                        onClick={() => {
+                                                            setMediaPreview(null);
+                                                            setIncidentForm(prev => ({ ...prev, media: null }));
+                                                        }}
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
@@ -747,8 +811,7 @@ const CitizenDashboard = () => {
                                                 location: '',
                                                 latitude: '',
                                                 longitude: '',
-                                                media: null,
-                                                severity: 'medium'
+                                                media: null
                                             });
                                             setMediaPreview(null);
                                         }}>
@@ -795,7 +858,7 @@ const CitizenDashboard = () => {
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 

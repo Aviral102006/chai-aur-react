@@ -194,7 +194,7 @@ const IncidentMap = ({ incidents, searchRadius }) => {
                                     </div>
                                     <div className="popup-meta-item">
                                         <span className="meta-icon">👤</span>
-                                        <span>{incident.reportedBy}</span>
+                                        <span>{incident.reportedBy} ({incident.reporterEmail})</span>
                                     </div>
                                 </div>
 

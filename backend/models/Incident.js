@@ -30,8 +30,7 @@ const incidentSchema = new mongoose.Schema({
     },
     severity: {
         type: String,
-        required: true,
-        enum: ['low', 'medium', 'high', 'critical']
+        default: 'medium'
     },
     status: {
         type: String,
@@ -48,7 +47,11 @@ const incidentSchema = new mongoose.Schema({
     },
     reportedBy: {
         type: String,
-        default: 'Anonymous'
+        required: true
+    },
+    reporterEmail: {
+        type: String,
+        required: true
     },
     media: {
         type: String,
@@ -57,6 +60,14 @@ const incidentSchema = new mongoose.Schema({
     timestamp: {
         type: Date,
         default: Date.now
+    },
+    departments: {
+        type: [String],
+        default: []
+    },
+    adminType: {
+        type: String,
+        default: 'General'
     }
 }, {
     timestamps: true

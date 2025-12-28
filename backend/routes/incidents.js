@@ -3,6 +3,8 @@ const router = express.Router();
 const Incident = require('../models/Incident');
 const multer = require('multer');
 const path = require('path');
+const axios = require('axios');
+
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -82,8 +84,11 @@ router.get('/', async (req, res) => {
             upvotes: incident.upvotes,
             verified: incident.verified,
             reportedBy: incident.reportedBy,
+            reporterEmail: incident.reporterEmail,
             status: incident.status,
-            media: incident.media
+            media: incident.media,
+            departments: incident.departments,
+            adminType: incident.adminType
         }));
 
         res.json(transformedIncidents);
@@ -116,8 +121,11 @@ router.get('/:id', async (req, res) => {
             upvotes: incident.upvotes,
             verified: incident.verified,
             reportedBy: incident.reportedBy,
+            reporterEmail: incident.reporterEmail,
             status: incident.status,
-            media: incident.media
+            media: incident.media,
+            departments: incident.departments,
+            adminType: incident.adminType
         });
     } catch (error) {
         console.error('Error fetching incident:', error);
@@ -130,16 +138,36 @@ router.get('/:id', async (req, res) => {
 // @access  Public
 router.post('/', upload.single('media'), async (req, res) => {
     try {
-        const { type, description, location, latitude, longitude, severity, reportedBy } = req.body;
+        const { type, description, location, latitude, longitude, reportedBy, reporterEmail } = req.body;
 
         // Validate required fields
-        if (!type || !description || !location || !severity) {
+        if (!type || !description || !location) {
             return res.status(400).json({ message: 'Please provide all required fields' });
         }
 
         // Generate incident ID
         const count = await Incident.countDocuments();
         const incidentId = `INC-${String(count + 1).padStart(3, '0')}`;
+
+        // Call AI services for severity and department prediction
+        let aiSeverity = 'medium';
+        let departments = [];
+
+        try {
+            const [severityRes, deptRes] = await Promise.all([
+                axios.post('http://localhost:8080/severity', { text: description }),
+                axios.post('http://localhost:8080/department', { text: description })
+            ]);
+
+            if (severityRes.data && severityRes.data.severity) {
+                aiSeverity = severityRes.data.severity.toLowerCase();
+            }
+            if (deptRes.data && deptRes.data.departments) {
+                departments = deptRes.data.departments;
+            }
+        } catch (aiError) {
+            console.error('AI Service Error:', aiError.message);
+        }
 
         const newIncident = new Incident({
             incidentId,
@@ -148,9 +176,12 @@ router.post('/', upload.single('media'), async (req, res) => {
             location,
             latitude: parseFloat(latitude) || 37.7749,
             longitude: parseFloat(longitude) || -122.4194,
-            severity,
+            severity: aiSeverity,
             reportedBy: reportedBy || 'Anonymous',
-            media: req.file ? `/uploads/${req.file.filename}` : null
+            reporterEmail: reporterEmail || 'unknown@example.com',
+            media: req.file ? `/uploads/${req.file.filename}` : null,
+            departments: departments,
+            adminType: departments.length > 0 ? departments[0] : 'General'
         });
 
         const savedIncident = await newIncident.save();
@@ -169,8 +200,11 @@ router.post('/', upload.single('media'), async (req, res) => {
                 upvotes: savedIncident.upvotes,
                 verified: savedIncident.verified,
                 reportedBy: savedIncident.reportedBy,
+                reporterEmail: savedIncident.reporterEmail,
                 status: savedIncident.status,
-                media: savedIncident.media
+                media: savedIncident.media,
+                departments: savedIncident.departments,
+                adminType: savedIncident.adminType
             }
         });
     } catch (error) {
@@ -251,4 +285,31 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
+// @route   POST /api/incidents/analyze
+// @desc    Analyze incident description using AI service
+// @access  Public
+router.post('/analyze', async (req, res) => {
+    try {
+        const { description } = req.body;
+        if (!description) {
+            return res.status(400).json({ message: 'Description is required' });
+        }
+
+        const [severityRes, deptRes] = await Promise.all([
+            axios.post('http://localhost:8080/severity', { text: description }),
+            axios.post('http://localhost:8080/department', { text: description })
+        ]);
+
+        res.json({
+            severity: severityRes.data.severity ? severityRes.data.severity.toLowerCase() : 'medium',
+            departments: deptRes.data.departments || [],
+            adminType: (deptRes.data.departments && deptRes.data.departments.length > 0) ? deptRes.data.departments[0] : 'General'
+        });
+    } catch (error) {
+        console.error('AI Analysis Error:', error.message);
+        res.status(500).json({ message: 'AI Analysis failed', error: error.message });
+    }
+});
+
 module.exports = router;
+

@@ -2,6 +2,7 @@ import { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import '../CitizenDashboard.css';
+import logo from '../assets/logo.png';
 
 const Register = () => {
     const [formData, setFormData] = useState({
@@ -49,11 +50,11 @@ const Register = () => {
         <div className="dashboard-container" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div className="glass-card" style={{ padding: '3rem', width: '100%', maxWidth: '450px', backdropFilter: 'blur(20px)' }}>
                 <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📝</div>
-                    <h1 style={{ background: 'var(--primary-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '0.5rem' }}>
-                        Create Account
+                    <img src={logo} alt="CrisisLink Logo" style={{ width: '180px', height: '180px', objectFit: 'contain', marginBottom: '0.5rem' }} />
+                    <h1 style={{ background: 'var(--primary-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '0.25rem' }}>
+                        Join CrisisLink
                     </h1>
-                    <p style={{ color: 'var(--text-secondary)' }}>Join the Emergency Response Hub</p>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Secure AI-Driven Incident Routing</p>
                 </div>
 
                 {error && (
