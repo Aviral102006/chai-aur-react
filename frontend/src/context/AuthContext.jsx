@@ -2,9 +2,10 @@ import { createContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext();
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    // Loading state is crucial for checking auth on refresh before redirects
     const [authLoading, setAuthLoading] = useState(true);
 
     useEffect(() => {
@@ -15,9 +16,8 @@ export const AuthProvider = ({ children }) => {
         setAuthLoading(false);
     }, []);
 
-    // Login function
     const login = async (email, password) => {
-        const response = await fetch('http://localhost:5000/api/auth/login', {
+        const response = await fetch(`${API_URL}/api/auth/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -36,9 +36,8 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Register function
     const register = async (name, email, password) => {
-        const response = await fetch('http://localhost:5000/api/auth/register', {
+        const response = await fetch(`${API_URL}/api/auth/register`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

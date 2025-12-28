@@ -34,17 +34,18 @@ const CitizenDashboard = () => {
     const [analysis, setAnalysis] = useState({ severity: null, departments: [], adminType: null, loading: false });
 
     // Fetch incidents from API
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
     const fetchIncidents = async () => {
         try {
             setIsLoading(true);
-            // Build query string from filters
             const queryParams = new URLSearchParams();
             if (filters.type !== 'all') queryParams.append('type', filters.type);
             if (filters.severity !== 'all') queryParams.append('severity', filters.severity);
             if (filters.verificationStatus !== 'all') queryParams.append('verificationStatus', filters.verificationStatus);
             if (filters.timeRange !== 'all') queryParams.append('timeRange', filters.timeRange);
 
-            const response = await fetch(`http://localhost:5000/api/incidents?${queryParams.toString()}`);
+            const response = await fetch(`${API_URL}/api/incidents?${queryParams.toString()}`);
 
             if (!response.ok) {
                 throw new Error('Failed to fetch incidents');
@@ -77,7 +78,7 @@ const CitizenDashboard = () => {
         const timer = setTimeout(async () => {
             setAnalysis(prev => ({ ...prev, loading: true }));
             try {
-                const response = await fetch('http://localhost:5000/api/incidents/analyze', {
+                const response = await fetch(`${API_URL}/api/incidents/analyze`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ description: incidentForm.description })
@@ -194,7 +195,7 @@ const CitizenDashboard = () => {
                 formData.append('media', incidentForm.media);
             }
 
-            const response = await fetch('http://localhost:5000/api/incidents', {
+            const response = await fetch(`${API_URL}/api/incidents`, {
                 method: 'POST',
                 body: formData // allow browser to set content-type header for multipart
             });
@@ -234,7 +235,7 @@ const CitizenDashboard = () => {
 
     const handleUpvote = async (incidentId) => {
         try {
-            const response = await fetch(`http://localhost:5000/api/incidents/${incidentId}/upvote`, {
+            const response = await fetch(`${API_URL}/api/incidents/${incidentId}/upvote`, {
                 method: 'PUT'
             });
 
@@ -547,7 +548,7 @@ const CitizenDashboard = () => {
                                                     {incident.media && (
                                                         <div className="incident-media">
                                                             <img
-                                                                src={`http://localhost:5000${incident.media}`}
+                                                                src={`${API_URL}${incident.media}`}
                                                                 alt="Incident documentation"
                                                                 style={{
                                                                     width: '100%',

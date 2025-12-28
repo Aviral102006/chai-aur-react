@@ -154,9 +154,10 @@ router.post('/', upload.single('media'), async (req, res) => {
         let departments = [];
 
         try {
+            const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8080';
             const [severityRes, deptRes] = await Promise.all([
-                axios.post('http://localhost:8080/severity', { text: description }),
-                axios.post('http://localhost:8080/department', { text: description })
+                axios.post(`${AI_SERVICE_URL}/severity`, { text: description }),
+                axios.post(`${AI_SERVICE_URL}/department`, { text: description })
             ]);
 
             if (severityRes.data && severityRes.data.severity) {
@@ -295,9 +296,11 @@ router.post('/analyze', async (req, res) => {
             return res.status(400).json({ message: 'Description is required' });
         }
 
+        const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8080';
+
         const [severityRes, deptRes] = await Promise.all([
-            axios.post('http://localhost:8080/severity', { text: description }),
-            axios.post('http://localhost:8080/department', { text: description })
+            axios.post(`${AI_SERVICE_URL}/severity`, { text: description }),
+            axios.post(`${AI_SERVICE_URL}/department`, { text: description })
         ]);
 
         res.json({
